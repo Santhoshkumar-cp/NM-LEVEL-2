@@ -1,4 +1,3 @@
-# app.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -14,7 +13,6 @@ st.markdown("Upload an image, click anywhere on it, and get the RGB and closest 
 @st.cache_data
 def load_colors(csv_path="colors.csv"):
     df = pd.read_csv(csv_path)
-    # Ensure integer RGB columns
     df["R"] = df["R"].astype(int)
     df["G"] = df["G"].astype(int)
     df["B"] = df["B"].astype(int)
@@ -24,23 +22,18 @@ def get_pixel_rgb(img: Image.Image, x: int, y: int):
     """Return RGB tuple at (x, y). PIL uses (x, y) where y is vertical index."""
     img_rgb = img.convert("RGB")
     width, height = img_rgb.size
-    # clamp coordinates
     x = max(0, min(width - 1, x))
     y = max(0, min(height - 1, y))
     return img_rgb.getpixel((x, y))
 
 def find_closest_color_name(rgb, colors_df):
     r, g, b = rgb
-    # Euclidean distance in RGB space
     cols = colors_df[["R","G","B"]].values
     dist = np.sqrt(np.sum((cols - np.array([r,g,b]))**2, axis=1))
     idx = np.argmin(dist)
     return colors_df.iloc[idx]
 
-# Load colors
 colors_df = load_colors("colors.csv")
-
-# Sidebar / instructions
 st.sidebar.header("Instructions")
 st.sidebar.write("""
 1. Upload an image.  
@@ -51,11 +44,9 @@ st.sidebar.write("""
 uploaded_file = st.file_uploader("Upload an image (PNG/JPG)", type=["png","jpg","jpeg"])
 
 if uploaded_file is not None:
-    # Read image
     img = Image.open(io.BytesIO(uploaded_file.read()))
     st.image(img, caption="Uploaded image", use_column_width=True)
 
-    # Use the streamlit-image-coordinates to get click coordinates
     st.info("Click anywhere on the image below to detect color.")
     coords = streamlit_image_coordinates(img, key="img_coords")
 
@@ -64,12 +55,8 @@ if uploaded_file is not None:
         y = int(coords['y'])
         st.write(f"Clicked coordinates: (x={x}, y={y})")
 
-        # The component scales the image to display width; streamlit-image-coordinates returns coords on displayed image.
-        # If displayed size differs from original, streamlit_image_coordinates handles returned coords mapped to original image size.
-        # So we can directly use coords to sample from the original PIL image.
         r,g,b = get_pixel_rgb(img, x, y)
         st.markdown("### Detected color")
-        # Color name lookup
         row = find_closest_color_name((r,g,b), colors_df)
         color_name = row["color_name"]
         hex_code = row["hex"]
@@ -84,11 +71,9 @@ if uploaded_file is not None:
             st.write(f"{color_name} ({hex_code})")
         with col2:
             st.write("**Preview**")
-            # Create a small block of the detected color
             preview = Image.new("RGB", (200,100), (r,g,b))
             st.image(preview, caption="Detected color", use_column_width=False)
 
-        # Also show the matched color sample
         st.markdown("---")
         st.write("**Matched dataset color preview**")
         matched_preview = Image.new("RGB", (200,100), (int(row['R']), int(row['G']), int(row['B'])))
